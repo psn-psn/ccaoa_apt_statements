@@ -3,7 +3,7 @@ import os
 import glob
 import pandas as pd
 import streamlit as st
-
+from datetime import datetime
 from reportlab.lib.pagesizes import A4
 from reportlab.platypus import (
     SimpleDocTemplate,
@@ -149,10 +149,19 @@ def generate_pdf(df, apartment):
         ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
         ("FONTSIZE", (0, 0), (-1, -1), 8)
     ]))
+    report_date_style = ParagraphStyle(
+        'ReportDateStyle',
+        parent=styles['Normal'],
+        fontName='Helvetica',
+        fontSize=9,
+        alignment=TA_LEFT,
+        spaceAfter=10
+    )
 
+    today_str = datetime.now().strftime("%d-%b-%Y"
     story = [
        Paragraph(f"<b>CCAOA Maintenance Statement for Apartment : {apartment}</b>", styles["Title"]),
-       #Paragraph(f"Apartment : <b>{apartment}</b>", styles["Title"]),
+       Paragraph(f"Report Date: <b>{today_str}</b>", report_date_style)
        table
     ]
     doc.build(story)
