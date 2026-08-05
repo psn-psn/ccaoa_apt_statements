@@ -158,7 +158,7 @@ def generate_pdf(df, apartment):
         spaceAfter=10
     )
 
-    today_str = datetime.now().strftime("%d-%b-%Y"
+    today_str = datetime.now().strftime("%d-%b-%Y")
     story = [
        Paragraph(f"<b>CCAOA Maintenance Statement for Apartment : {apartment}</b>", styles["Title"]),
        Paragraph(f"Report Date: <b>{today_str}</b>", report_date_style)
