@@ -2,6 +2,7 @@ import base64
 import glob
 import io
 import os
+import re
 import zipfile
 import pandas as pd
 import pypdfium2 as pdfium
@@ -17,6 +18,18 @@ from reportlab.platypus import (
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib import colors
 from reportlab.lib.units import inch
+
+# ----------------------------------------------------
+# Helper Functions
+# ----------------------------------------------------
+
+def clean_code(code_str):
+    """Strips whitespace and converts code to a clean string."""
+    if pd.isna(code_str):
+        return ""
+    # Remove any decimal points if pandas read numerical codes as floats
+    cleaned = str(code_str).split('.')[0].strip()
+    return cleaned.zfill(4) if len(cleaned) <= 4 and cleaned.isdigit() else cleaned
 
 # ----------------------------------------------------
 # PDF Generator Logic
@@ -153,11 +166,10 @@ def generate_pdf(df, apartment):
     return pdf
 
 def render_pdf_to_images(pdf_bytes):
-    """Converts in-memory PDF bytes into PIL Images for previewing in Streamlit."""
+    """Converts in-memory PDF bytes into PIL Images for previewing."""
     pdf_file = pdfium.PdfDocument(pdf_bytes)
     images = []
     for page in pdf_file:
-        # Render at 150 DPI for crisp visual resolution
         bitmap = page.render(scale=150 / 72)
         pil_image = bitmap.to_pil()
         images.append(pil_image)
@@ -184,33 +196,106 @@ st.markdown("""
 
 st.title("🏢 Apartment Statement Generator")
 
-# Auto-Detect Local CSV
+# Auto-Detect Files
 script_dir = os.path.dirname(os.path.abspath(__file__)) if '__file__' in locals() else os.getcwd()
-csv_files = glob.glob(os.path.join(script_dir, "*.csv"))
+
+# Locate main transaction CSV (excluding mobile_code.csv)
+all_csvs = glob.glob(os.path.join(script_dir, "*.csv"))
+data_csvs = [f for f in all_csvs if os.path.basename(f) != "mobile_code.csv"]
+code_csv_path = os.path.join(script_dir, "mobile_code.csv")
 
 df = None
+code_df = None
 apartment = None
 apartments = []
 
-c1, c2 = st.columns([2, 2])
+c1, c2, c3 = st.columns([1.5, 1.25, 1.25])
 
 with c1:
-    if csv_files:
-        loaded_file_path = csv_files[0]
+    if data_csvs:
+        loaded_file_path = data_csvs[0]
         loaded_file_name = os.path.basename(loaded_file_path)
         df = pd.read_csv(loaded_file_path)
         apartments = sorted(df["Apartment Number"].astype(str).unique())
-        st.success(f"📂 Auto-loaded CSV: **{loaded_file_name}**")
+        st.success(f"📂 Auto-loaded Data: **{loaded_file_name}**")
     else:
-        st.error("❌ No CSV file found in the script directory.")
+        st.error("❌ Transaction CSV file not found in script directory.")
+
+    # Load mapping file
+    if os.path.exists(code_csv_path):
+        code_df = pd.read_csv(code_csv_path, dtype=str)
+    else:
+        st.error("❌ `mobile_code.csv` not found in script directory.")
 
 with c2:
     if df is not None and apartments:
         apartment = st.selectbox("Select Apartment", apartments)
 
+user_code = ""
+with c3:
+    if df is not None and apartment:
+        user_code = st.text_input(
+            "Enter 4-Digit Passcode",
+            max_chars=4,
+            type="password",
+            placeholder="****"
+        ).strip()
+
 st.markdown("---")
 
+# ----------------------------------------------------
+# Verification & Access Gate
+# ----------------------------------------------------
+
+is_verified = False
+
 if df is not None and apartment:
+    if code_df is None:
+        st.error("❌ Unable to verify code because `mobile_code.csv` is missing.")
+    else:
+        # Standardize column search in mobile_code.csv
+        apt_col = None
+        code_col = None
+
+        for col in code_df.columns:
+            col_lower = col.lower()
+            if "apartment" in col_lower or "flat" in col_lower:
+                apt_col = col
+            elif "code" in col_lower or "passcode" in col_lower or "pin" in col_lower or "mobile" in col_lower:
+                code_col = col
+
+        # Fallback to 1st and 2nd columns if headers aren't explicitly named
+        if not apt_col:
+            apt_col = code_df.columns[0]
+        if not code_col:
+            code_col = code_df.columns[1] if len(code_df.columns) > 1 else code_df.columns[0]
+
+        # Match selected apartment
+        matched_row = code_df[
+            code_df[apt_col].astype(str).str.upper() == str(apartment).upper()
+        ]
+
+        if not matched_row.empty:
+            expected_code = clean_code(matched_row.iloc[0][code_col])
+            clean_user_code = clean_code(user_code)
+
+            if not user_code:
+                st.info("🔒 Please enter your 4-digit code to verify access.")
+            elif len(clean_user_code) != 4 or not clean_user_code.isdigit():
+                st.warning("⚠️ Please enter a valid 4-digit numeric code.")
+            elif clean_user_code == expected_code:
+                st.success("✅ Code verified successfully!")
+                is_verified = True
+            else:
+                st.error("❌ Incorrect 4-digit code for this apartment.")
+        else:
+            st.error(f"❌ No passcode mapping found for Apartment {apartment} in `mobile_code.csv`.")
+
+# ----------------------------------------------------
+# Content Display (Protected by Passcode)
+# ----------------------------------------------------
+
+if df is not None and apartment and is_verified:
     preview = df[
         df["Apartment Number"]
         .astype(str)
@@ -256,7 +341,7 @@ if df is not None and apartment:
 
     st.markdown("<br/>", unsafe_allow_html=True)
 
-    # --- Robust PDF Image Render (Chrome / Mobile Safe) ---
+    # PDF Image Render
     if "pdf_bytes" in st.session_state and st.session_state.get("pdf_apt") == apartment:
         st.markdown("### 📄 Statement Preview")
         try:
@@ -276,6 +361,3 @@ if df is not None and apartment:
         height=300,
         hide_index=True
     )
-
-else:
-    st.info("👆 Please ensure a CSV file exists in the script directory.")
