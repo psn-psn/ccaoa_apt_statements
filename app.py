@@ -177,10 +177,10 @@ def generate_pdf(df, apartment):
         "MNQ4: Maintenance Q4",
         "IMP: Imprest",
         "SP0: Special Collection 40000",
-        "SP1: Special Collection Installment 1",
-        "SP2: Special Collection Installment 2",
-        "SP3: Special Collection Installment 3",
-        "SP4: Special Collection Installment 4",
+        "SPC_Aug: Special Collection August",
+        "SPC_Sep: Special Collection September",
+        "SPC_Oct: Special Collection October",
+        "SPC_Nov: Special Collection November",
         "CFW: Carry Forward",
         "LTF: Late Fee"
     ]
