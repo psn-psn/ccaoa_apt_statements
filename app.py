@@ -1,12 +1,7 @@
-import base64
-import glob
 import io
 import os
-import re
-import zipfile
+import glob
 import pandas as pd
-import pypdfium2 as pdfium
-from PIL import Image
 import streamlit as st
 
 from reportlab.platypus import (
@@ -27,7 +22,6 @@ def clean_code(code_str):
     """Strips whitespace and converts code to a clean string."""
     if pd.isna(code_str):
         return ""
-    # Remove any decimal points if pandas read numerical codes as floats
     cleaned = str(code_str).split('.')[0].strip()
     return cleaned.zfill(4) if len(cleaned) <= 4 and cleaned.isdigit() else cleaned
 
@@ -165,22 +159,12 @@ def generate_pdf(df, apartment):
 
     return pdf
 
-def render_pdf_to_images(pdf_bytes):
-    """Converts in-memory PDF bytes into PIL Images for previewing."""
-    pdf_file = pdfium.PdfDocument(pdf_bytes)
-    images = []
-    for page in pdf_file:
-        bitmap = page.render(scale=150 / 72)
-        pil_image = bitmap.to_pil()
-        images.append(pil_image)
-    return images
-
 # ----------------------------------------------------
 # Main Streamlit Application
 # ----------------------------------------------------
 
 st.set_page_config(
-    page_title="Chartered Coronet Apartment Maintenance Statements",
+    page_title="CCAOA Maintenance",
     page_icon="🏢",
     layout="wide"
 )
@@ -194,7 +178,8 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-st.title("Chartered Coronet Apartment Maintenance Statements")
+# Title reduced in font size by half
+st.markdown("<h3 style='margin-bottom: 0px;'>🏢 CCAOA Maintenance</h3>", unsafe_allow_html=True)
 
 # Auto-Detect Files
 script_dir = os.path.dirname(os.path.abspath(__file__)) if '__file__' in locals() else os.getcwd()
@@ -314,48 +299,14 @@ if df is not None and apartment and is_verified:
 
     st.markdown("<br/>", unsafe_allow_html=True)
 
-    # Actions Toolbar
-    st.subheader("⚡ Actions & Exports")
-    row1_col1, row1_col2 = st.columns([1, 1])
+    # Generate PDF directly for download
+    pdf_bytes = generate_pdf(df, apartment)
 
-    with row1_col1:
-        view_pdf = st.button("👁️ Open / Preview Current PDF", key="btn_view")
-        if view_pdf:
-            st.session_state["pdf_bytes"] = generate_pdf(df, apartment)
-            st.session_state["pdf_apt"] = apartment
-
-        if "pdf_bytes" in st.session_state and st.session_state.get("pdf_apt") == apartment:
-            st.download_button(
-                label=f"⬇️ Download PDF ({apartment})",
-                data=st.session_state["pdf_bytes"],
-                file_name=f"{apartment}_Statement.pdf",
-                mime="application/pdf",
-                type="primary",
-                key="btn_dl"
-            )
-
-    with row1_col2:
-        st.button("📦 Batch Generate ALL PDFs (.ZIP) [Disabled]", key="btn_batch", disabled=True)
-
-    st.markdown("<br/>", unsafe_allow_html=True)
-
-    # PDF Image Render
-    if "pdf_bytes" in st.session_state and st.session_state.get("pdf_apt") == apartment:
-        st.markdown("### 📄 Statement Preview")
-        try:
-            images = render_pdf_to_images(st.session_state["pdf_bytes"])
-            for idx, img in enumerate(images):
-                st.image(img, caption=f"Page {idx + 1}", use_container_width=True)
-        except Exception as e:
-            st.error(f"Error rendering preview: {e}")
-            
-        st.markdown("<br/>", unsafe_allow_html=True)
-
-    # Data Table Preview
-    st.subheader("📊 Transaction Log Preview")
-    st.dataframe(
-        preview,
-        use_container_width=True,
-        height=300,
-        hide_index=True
+    st.download_button(
+        label=f"⬇️ Download PDF Statement ({apartment})",
+        data=pdf_bytes,
+        file_name=f"{apartment}_Statement.pdf",
+        mime="application/pdf",
+        type="primary",
+        key="btn_dl"
     )
