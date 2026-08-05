@@ -166,7 +166,7 @@ story = [
     Paragraph(f"<b>CCAOA Maintenance Statement for Apartment : {apartment}</b>", styles["Title"]),
     Paragraph(f"Report Date: <b>{today_str}</b>", report_date_style),
     table
-    ]
+]
     doc.build(story)
     pdf = buffer.getvalue()
     buffer.close()
