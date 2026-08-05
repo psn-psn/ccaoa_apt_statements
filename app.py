@@ -150,21 +150,23 @@ def generate_pdf(df, apartment):
         ("FONTSIZE", (0, 0), (-1, -1), 8)
     ]))
    report_date_style = ParagraphStyle(
-        'ReportDateStyle',
-        parent=styles['Normal'],
-        fontName='Helvetica',
-        fontSize=9,
-        alignment=TA_LEFT,
-        spaceAfter=10
-    )
+    'ReportDateStyle',
+    parent=styles['Normal'],
+    fontName='Helvetica',
+    fontSize=9,
+    alignment=TA_LEFT,  # Or alignment=0
+    spaceAfter=10
+)
 
-    today_str = datetime.now().strftime("%d-%b-%Y")
+# 2. Format Date String
+today_str = datetime.now().strftime("%d-%b-%Y")
 
-    story = [
-        Paragraph(f"<b>CCAOA Maintenance Statement for Apartment : {apartment}</b>", styles["Title"]),
-        Paragraph(f"Report Date: <b>{today_str}</b>", report_date_style),
-        table
-    ]
+# 3. Construct Flowables List
+story = [
+    Paragraph(f"<b>CCAOA Maintenance Statement for Apartment : {apartment}</b>", styles["Title"]),
+    Paragraph(f"Report Date: <b>{today_str}</b>", report_date_style),
+    table
+]
     doc.build(story)
     pdf = buffer.getvalue()
     buffer.close()
