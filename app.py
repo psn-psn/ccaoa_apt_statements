@@ -151,8 +151,8 @@ def generate_pdf(df, apartment):
     ]))
 
     story = [
-        Paragraph("<b>Apartment Maintenance Statement</b>", styles["Title"]),
-        Paragraph(f"Apartment : <b>{apartment}</b>", styles["Normal"]),
+        Paragraph("<b>CCAOA Maintenance Statement</b>", styles["Title"]),
+        Paragraph(f"Apartment : <b>{apartment}</b>", styles["Title"]),
         table
     ]
 
