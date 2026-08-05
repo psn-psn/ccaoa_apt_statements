@@ -5,6 +5,7 @@ import os
 import zipfile
 import pandas as pd
 import streamlit as st
+import streamlit.components.v1 as components
 
 from reportlab.platypus import (
     SimpleDocTemplate,
@@ -150,19 +151,6 @@ def generate_pdf(df, apartment):
 
     return pdf
 
-
-def create_batch_zip(df, apartments):
-    """Generates PDFs for all apartments and packs them into a ZIP archive."""
-    zip_buffer = io.BytesIO()
-    with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
-        for apt in apartments:
-            pdf_bytes = generate_pdf(df, apt)
-            file_name = f"{apt}_Statement.pdf"
-            zf.writestr(file_name, pdf_bytes)
-    zip_buffer.seek(0)
-    return zip_buffer.getvalue()
-
-
 # ----------------------------------------------------
 # Main Streamlit Application
 # ----------------------------------------------------
@@ -173,7 +161,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# Custom Styling for Compact View
+# Custom Styling
 st.markdown("""
     <style>
         .block-container { padding-top: 1.2rem; padding-bottom: 1rem; }
@@ -184,20 +172,18 @@ st.markdown("""
 
 st.title("🏢 Apartment Statement Generator")
 
-# --- Auto-Detect Local CSV File ---
+# Auto-Detect Local CSV
 script_dir = os.path.dirname(os.path.abspath(__file__)) if '__file__' in locals() else os.getcwd()
 csv_files = glob.glob(os.path.join(script_dir, "*.csv"))
 
 df = None
 apartment = None
 apartments = []
-loaded_file_name = None
 
 c1, c2 = st.columns([2, 2])
 
 with c1:
     if csv_files:
-        # Load the first CSV file found in the script's directory
         loaded_file_path = csv_files[0]
         loaded_file_name = os.path.basename(loaded_file_path)
         df = pd.read_csv(loaded_file_path)
@@ -224,7 +210,7 @@ if df is not None and apartment:
     total_credits = abs(preview[preview["Amount"] < 0]["Amount"].sum()) if "Amount" in preview.columns else 0
     net_bal = total_debits - total_credits
 
-    # Top Metric Bar
+    # Metrics Bar
     m1, m2, m3, m4 = st.columns(4)
     m1.metric("Selected Flat", apartment)
     m2.metric("Total Debits", f"₹{total_debits:,.2f}")
@@ -233,12 +219,10 @@ if df is not None and apartment:
 
     st.markdown("<br/>", unsafe_allow_html=True)
 
-    # --- Dedicated Action Toolbar ---
+    # Actions Toolbar
     st.subheader("⚡ Actions & Exports")
-    
-    # 2-Row Action Grid
     row1_col1, row1_col2 = st.columns([1, 1])
-    
+
     with row1_col1:
         view_pdf = st.button("👁️ Open / Preview Current PDF", key="btn_view")
         if view_pdf:
@@ -256,21 +240,22 @@ if df is not None and apartment:
             )
 
     with row1_col2:
-        # Batch generation button disabled as requested
-        batch_pdf = st.button(
-            "📦 Batch Generate ALL PDFs (.ZIP) [Disabled]",
-            key="btn_batch",
-            disabled=True
-        )
+        st.button("📦 Batch Generate ALL PDFs (.ZIP) [Disabled]", key="btn_batch", disabled=True)
 
     st.markdown("<br/>", unsafe_allow_html=True)
 
-    # --- Embedded Viewer (Opens when 'View PDF' is clicked) ---
+    # --- Fixed Embedded PDF Viewer for Chrome ---
     if "pdf_bytes" in st.session_state and st.session_state.get("pdf_apt") == apartment:
         st.markdown("### 📄 Statement Preview")
         base64_pdf = base64.b64encode(st.session_state["pdf_bytes"]).decode('utf-8')
-        pdf_display = f'<iframe src="data:application/pdf;base64,{base64_pdf}" width="100%" height="550" type="application/pdf"></iframe>'
-        st.markdown(pdf_display, unsafe_allow_html=True)
+
+        # Using HTML <object> tag rendered inside Streamlit components to bypass Chrome data-URI block
+        pdf_display = f"""
+            <object data="data:application/pdf;base64,{base64_pdf}" type="application/pdf" width="100%" height="600px">
+                <p>Your browser does not support embedded PDFs. You can download the PDF using the button above.</p>
+            </object>
+        """
+        components.html(pdf_display, height=620, scrolling=True)
         st.markdown("<br/>", unsafe_allow_html=True)
 
     # Data Table Preview
