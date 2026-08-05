@@ -159,14 +159,14 @@ def generate_pdf(df, apartment):
     )
 
 # 2. Format Date String
-today_str = datetime.now().strftime("%d-%b-%Y")
+    today_str = datetime.now().strftime("%d-%b-%Y")
 
 # 3. Construct Flowables List
-story = [
+    story = [
     Paragraph(f"<b>CCAOA Maintenance Statement for Apartment : {apartment}</b>", styles["Title"]),
     Paragraph(f"Report Date: <b>{today_str}</b>", report_date_style),
     table
-]
+    ]
     doc.build(story)
     pdf = buffer.getvalue()
     buffer.close()
