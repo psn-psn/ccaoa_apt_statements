@@ -4,6 +4,7 @@ import glob
 import pandas as pd
 import streamlit as st
 
+from reportlab.lib.pagesizes import A4
 from reportlab.platypus import (
     SimpleDocTemplate,
     Table,
@@ -26,7 +27,7 @@ def clean_code(code_str):
     return cleaned.zfill(4) if len(cleaned) <= 4 and cleaned.isdigit() else cleaned
 
 # ----------------------------------------------------
-# PDF Generator Logic
+# PDF Generator Logic (A4 Portrait)
 # ----------------------------------------------------
 
 def generate_pdf(df, apartment):
@@ -50,9 +51,10 @@ def generate_pdf(df, apartment):
 
     buffer = io.BytesIO()
 
+    # Configured explicitly for A4 Portrait
     doc = SimpleDocTemplate(
         buffer,
-        pagesize=(11.69 * inch, 8.27 * inch),
+        pagesize=A4,
         leftMargin=0.35 * inch,
         rightMargin=0.35 * inch,
         topMargin=0.35 * inch,
@@ -122,15 +124,16 @@ def generate_pdf(df, apartment):
         f"{balance:,.2f}"
     ])
 
+    # Adjusted column widths to sum up within standard A4 printable area (~7.57 inches)
     table = Table(
         rows,
         colWidths=[
-            4.2 * inch,
-            1.0 * inch,
-            0.9 * inch,
-            1.0 * inch,
-            0.9 * inch,
-            1.0 * inch
+            2.27 * inch,
+            1.05 * inch,
+            1.05 * inch,
+            1.05 * inch,
+            1.05 * inch,
+            1.10 * inch
         ],
         repeatRows=1
     )
@@ -169,7 +172,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# Custom Styling: Fix title height/clipping and adjust button widths
+# Custom Styling
 st.markdown("""
     <style>
         .block-container { 
