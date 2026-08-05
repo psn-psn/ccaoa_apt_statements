@@ -150,14 +150,10 @@ def generate_pdf(df, apartment):
         ("FONTSIZE", (0, 0), (-1, -1), 8)
     ]))
 
-    #story = [
-     #   Paragraph("<b>CCAOA Maintenance Statement</b>", styles["Title"]),
-      #  Paragraph(f"Apartment : <b>{apartment}</b>", styles["Title"]),
-       # table
-    #]
- story = [
-        Paragraph("<b>CCAOA Maintenance Statement for Apartment : <b>{apartment}</b>", styles["Title"]),
-        table
+    story = [
+       Paragraph("<b>CCAOA Maintenance Statement for Apartment : <b>{apartment}</b>", styles["Title"]),
+       #Paragraph(f"Apartment : <b>{apartment}</b>", styles["Title"]),
+       table
     ]
     doc.build(story)
     pdf = buffer.getvalue()
