@@ -151,12 +151,27 @@ def generate_pdf(df, apartment):
     ]))
 
     story = [
-        Paragraph("<b>CCAOA Maintenance Statement</b>", styles["Title"]),
-        Paragraph(f"Apartment : <b>{apartment}</b>", styles["Heading2"]),
-        table
+       Paragraph("<b>CCAOA Maintenance Statement</b>", styles["Title"]),
+       Paragraph(f"Apartment : <b>{apartment}</b>", styles["Heading2"]),
+       table
     ]
 
-    doc.build(story)
+    #doc.build(story)
+    # Footer Callback Function
+    def draw_footer(canvas, doc):
+        canvas.saveState()
+        canvas.setFont("Helvetica", 8)
+        canvas.setFillColor(colors.HexColor("#555555"))
+        footer_text = "ccaoa1@gmail.com | WhatsApp: Chartered Coronet Apt Owners"
+        canvas.drawString(0.35 * inch, 0.25 * inch, footer_text)
+        canvas.restoreState()
+
+    # Pass the footer callback to build()
+    doc.build(
+        story,
+        onFirstPage=draw_footer,
+        onLaterPages=draw_footer
+    )
     pdf = buffer.getvalue()
     buffer.close()
 
