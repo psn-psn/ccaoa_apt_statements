@@ -180,7 +180,7 @@ def render_pdf_to_images(pdf_bytes):
 # ----------------------------------------------------
 
 st.set_page_config(
-    page_title="Statement Generator",
+    page_title="Chartered Coronet Apartment Maintenance Statements",
     page_icon="🏢",
     layout="wide"
 )
@@ -194,7 +194,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-st.title("🏢 Apartment Statement Generator")
+st.title("Chartered Coronet Apartment Maintenance Statements")
 
 # Auto-Detect Files
 script_dir = os.path.dirname(os.path.abspath(__file__)) if '__file__' in locals() else os.getcwd()
@@ -209,33 +209,31 @@ code_df = None
 apartment = None
 apartments = []
 
-c1, c2, c3 = st.columns([1.5, 1.25, 1.25])
+# Load data files behind the scenes
+if data_csvs:
+    loaded_file_path = data_csvs[0]
+    df = pd.read_csv(loaded_file_path)
+    apartments = sorted(df["Apartment Number"].astype(str).unique())
+else:
+    st.error("❌ Transaction CSV file not found in script directory.")
+
+if os.path.exists(code_csv_path):
+    code_df = pd.read_csv(code_csv_path, dtype=str)
+else:
+    st.error("❌ `mobile_code.csv` not found in script directory.")
+
+# Controls Layout
+c1, c2 = st.columns([1, 1])
 
 with c1:
-    if data_csvs:
-        loaded_file_path = data_csvs[0]
-        loaded_file_name = os.path.basename(loaded_file_path)
-        df = pd.read_csv(loaded_file_path)
-        apartments = sorted(df["Apartment Number"].astype(str).unique())
-        st.success(f"📂 Auto-loaded Data: **{loaded_file_name}**")
-    else:
-        st.error("❌ Transaction CSV file not found in script directory.")
-
-    # Load mapping file
-    if os.path.exists(code_csv_path):
-        code_df = pd.read_csv(code_csv_path, dtype=str)
-    else:
-        st.error("❌ `mobile_code.csv` not found in script directory.")
-
-with c2:
     if df is not None and apartments:
         apartment = st.selectbox("Select Apartment", apartments)
 
 user_code = ""
-with c3:
+with c2:
     if df is not None and apartment:
         user_code = st.text_input(
-            "Enter last 4-Digits of your mobile number",
+            "Enter 4-Digit Passcode",
             max_chars=4,
             type="password",
             placeholder="****"
@@ -280,7 +278,7 @@ if df is not None and apartment:
             clean_user_code = clean_code(user_code)
 
             if not user_code:
-                st.info("🔒 Please enter last 4-digits of your mobile number to verify access.")
+                st.info("🔒 Please enter your 4-digit code to verify access.")
             elif len(clean_user_code) != 4 or not clean_user_code.isdigit():
                 st.warning("⚠️ Please enter a valid 4-digit numeric code.")
             elif clean_user_code == expected_code:
