@@ -169,17 +169,28 @@ st.set_page_config(
     layout="wide"
 )
 
-# Custom Styling
+# Custom Styling: Fix title height/clipping and adjust button widths
 st.markdown("""
     <style>
-        .block-container { padding-top: 1.2rem; padding-bottom: 1rem; }
-        div[data-testid="stMetricValue"] { font-size: 1.15rem; }
-        .stButton button, .stDownloadButton button { width: 100%; }
+        .block-container { 
+            padding-top: 2rem; 
+            padding-bottom: 1rem; 
+        }
+        h1 {
+            font-size: 1.6rem !important;
+            line-height: 1.4 !important;
+            padding-top: 0.5rem !important;
+            padding-bottom: 0.5rem !important;
+            margin: 0 !important;
+            overflow: visible !important;
+        }
+        .stButton button, .stDownloadButton button { 
+            width: 100%; 
+        }
     </style>
 """, unsafe_allow_html=True)
 
-# Title reduced in font size by half
-st.markdown("<h3 style='margin-bottom: 0px;'>🏢 CCAOA Maintenance</h3>", unsafe_allow_html=True)
+st.title("🏢 CCAOA Maintenance")
 
 # Auto-Detect Files
 script_dir = os.path.dirname(os.path.abspath(__file__)) if '__file__' in locals() else os.getcwd()
@@ -275,33 +286,13 @@ if df is not None and apartment:
             st.error(f"❌ No passcode mapping found for Apartment {apartment} in `mobile_code.csv`.")
 
 # ----------------------------------------------------
-# Content Display (Protected by Passcode)
+# Direct PDF Generation & Download
 # ----------------------------------------------------
 
 if df is not None and apartment and is_verified:
-    preview = df[
-        df["Apartment Number"]
-        .astype(str)
-        .str.upper()
-        == str(apartment).upper()
-    ].copy()
-
-    total_debits = preview[preview["Amount"] > 0]["Amount"].sum() if "Amount" in preview.columns else 0
-    total_credits = abs(preview[preview["Amount"] < 0]["Amount"].sum()) if "Amount" in preview.columns else 0
-    net_bal = total_debits - total_credits
-
-    # Metrics Bar
-    m1, m2, m3, m4 = st.columns(4)
-    m1.metric("Selected Flat", apartment)
-    m2.metric("Total Debits", f"₹{total_debits:,.2f}")
-    m3.metric("Total Credits", f"₹{total_credits:,.2f}")
-    m4.metric("Net Balance", f"₹{net_bal:,.2f}")
-
-    st.markdown("<br/>", unsafe_allow_html=True)
-
-    # Generate PDF directly for download
     pdf_bytes = generate_pdf(df, apartment)
 
+    st.markdown("<br/>", unsafe_allow_html=True)
     st.download_button(
         label=f"⬇️ Download PDF Statement ({apartment})",
         data=pdf_bytes,
