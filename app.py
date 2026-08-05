@@ -61,11 +61,12 @@ def generate_pdf(df, apartment):
         bottomMargin=0.5 * inch
     )
 
+    # Simplified Column Header Structure
     rows = [[
+        "Txn Date",
         "Description",
-        "Invoice Date",
+        "Type",
         "Debits (₹)",
-        "Payment Date",
         "Credits (₹)",
         "Balance (₹)"
     ]]
@@ -81,36 +82,34 @@ def generate_pdf(df, apartment):
             or float(r["Amount"]) < 0
         )
 
+        txn_date = ""
+        if pd.notna(r["Txn Date"]):
+            txn_date = r["Txn Date"].strftime("%d-%b-%Y")
+
         description = Paragraph(
             f"<b>{r['Description']}</b><br/>"
             f"<font size='7'>{r['Details']}</font>",
             styles["BodyText"]
         )
 
-        txn_date = ""
-        if pd.notna(r["Txn Date"]):
-            txn_date = r["Txn Date"].strftime("%d-%b-%Y")
+        txn_type = str(r.get("Type", ""))
 
         if payment:
-            invoice_date = ""
-            payment_date = txn_date
             debit = ""
             credit = f"{amount:,.2f}"
             balance -= amount
             total_credit += amount
         else:
-            invoice_date = txn_date
-            payment_date = ""
             debit = f"{amount:,.2f}"
             credit = ""
             balance += amount
             total_debit += amount
 
         rows.append([
+            txn_date,
             description,
-            invoice_date,
+            txn_type,
             debit,
-            payment_date,
             credit,
             f"{balance:,.2f}"
         ])
@@ -118,21 +117,22 @@ def generate_pdf(df, apartment):
     rows.append([
         Paragraph("<b>TOTAL</b>", styles["BodyText"]),
         "",
-        f"{total_debit:,.2f}",
         "",
+        f"{total_debit:,.2f}",
         f"{total_credit:,.2f}",
         f"{balance:,.2f}"
     ])
 
+    # Printable width is 7.57 inches on A4 with 0.35in margins
     table = Table(
         rows,
         colWidths=[
-            2.27 * inch,
-            1.05 * inch,
-            1.05 * inch,
-            1.05 * inch,
-            1.05 * inch,
-            1.10 * inch
+            1.05 * inch,  # Txn Date
+            2.77 * inch,  # Description
+            0.85 * inch,  # Type
+            0.95 * inch,  # Debits
+            0.95 * inch,  # Credits
+            1.00 * inch   # Balance
         ],
         repeatRows=1
     )
@@ -144,7 +144,7 @@ def generate_pdf(df, apartment):
         ("FONTNAME", (0, -1), (-1, -1), "Helvetica-Bold"),
         ("GRID", (0, 0), (-1, -1), 0.25, colors.grey),
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
-        ("ALIGN", (2, 1), (-1, -1), "RIGHT"),
+        ("ALIGN", (3, 1), (-1, -1), "RIGHT"),
         ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
         ("FONTSIZE", (0, 0), (-1, -1), 8)
     ]))
