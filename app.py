@@ -1,10 +1,14 @@
+import base64
+import glob
 import io
 import os
-import glob
+import re
+import zipfile
 import pandas as pd
+import pypdfium2 as pdfium
+from PIL import Image
 import streamlit as st
-from datetime import datetime
-from reportlab.lib.pagesizes import A4
+
 from reportlab.platypus import (
     SimpleDocTemplate,
     Table,
@@ -23,11 +27,12 @@ def clean_code(code_str):
     """Strips whitespace and converts code to a clean string."""
     if pd.isna(code_str):
         return ""
+    # Remove any decimal points if pandas read numerical codes as floats
     cleaned = str(code_str).split('.')[0].strip()
     return cleaned.zfill(4) if len(cleaned) <= 4 and cleaned.isdigit() else cleaned
 
 # ----------------------------------------------------
-# PDF Generator Logic (A4 Portrait)
+# PDF Generator Logic
 # ----------------------------------------------------
 
 def generate_pdf(df, apartment):
@@ -51,10 +56,9 @@ def generate_pdf(df, apartment):
 
     buffer = io.BytesIO()
 
-    # Configured explicitly for A4 Portrait
     doc = SimpleDocTemplate(
         buffer,
-        pagesize=A4,
+        pagesize=(11.69 * inch, 8.27 * inch),
         leftMargin=0.35 * inch,
         rightMargin=0.35 * inch,
         topMargin=0.35 * inch,
@@ -124,16 +128,15 @@ def generate_pdf(df, apartment):
         f"{balance:,.2f}"
     ])
 
-    # Adjusted column widths to sum up within standard A4 printable area (~7.57 inches)
     table = Table(
         rows,
         colWidths=[
-            2.27 * inch,
-            1.05 * inch,
-            1.05 * inch,
-            1.05 * inch,
-            1.05 * inch,
-            1.10 * inch
+            4.2 * inch,
+            1.0 * inch,
+            0.9 * inch,
+            1.0 * inch,
+            0.9 * inch,
+            1.0 * inch
         ],
         repeatRows=1
     )
@@ -149,36 +152,35 @@ def generate_pdf(df, apartment):
         ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
         ("FONTSIZE", (0, 0), (-1, -1), 8)
     ]))
-    report_date_style = ParagraphStyle(
-    'ReportDateStyle',
-    parent=styles['Normal'],
-    fontName='Helvetica',
-    fontSize=9,
-    alignment=TA_LEFT,  # Or alignment=0
-    spaceAfter=10
-    )
 
-# 2. Format Date String
-    today_str = datetime.now().strftime("%d-%b-%Y")
-
-# 3. Construct Flowables List
     story = [
-    Paragraph(f"<b>CCAOA Maintenance Statement for Apartment : {apartment}</b>", styles["Title"]),
-    Paragraph(f"Report Date: <b>{today_str}</b>", report_date_style),
-    table
+        Paragraph(f"<b>Apartment Maintenance Statement {apartment}</b>", styles["Title"]),
+        #Paragraph(f"Apartment : <b>{apartment}</b>", styles["Normal"]),
+        table
     ]
+
     doc.build(story)
     pdf = buffer.getvalue()
     buffer.close()
 
     return pdf
 
+def render_pdf_to_images(pdf_bytes):
+    """Converts in-memory PDF bytes into PIL Images for previewing."""
+    pdf_file = pdfium.PdfDocument(pdf_bytes)
+    images = []
+    for page in pdf_file:
+        bitmap = page.render(scale=150 / 72)
+        pil_image = bitmap.to_pil()
+        images.append(pil_image)
+    return images
+
 # ----------------------------------------------------
 # Main Streamlit Application
 # ----------------------------------------------------
 
 st.set_page_config(
-    page_title="CCAOA Maintenance",
+    page_title="Chartered Coronet Apartment Maintenance Statements",
     page_icon="🏢",
     layout="wide"
 )
@@ -186,25 +188,13 @@ st.set_page_config(
 # Custom Styling
 st.markdown("""
     <style>
-        .block-container { 
-            padding-top: 2rem; 
-            padding-bottom: 1rem; 
-        }
-        h1 {
-            font-size: 1.6rem !important;
-            line-height: 1.4 !important;
-            padding-top: 0.5rem !important;
-            padding-bottom: 0.5rem !important;
-            margin: 0 !important;
-            overflow: visible !important;
-        }
-        .stButton button, .stDownloadButton button { 
-            width: 100%; 
-        }
+        .block-container { padding-top: 1.2rem; padding-bottom: 1rem; }
+        div[data-testid="stMetricValue"] { font-size: 1.15rem; }
+        .stButton button, .stDownloadButton button { width: 100%; }
     </style>
 """, unsafe_allow_html=True)
 
-st.title("🏢 CCAOA Maintenance")
+st.title("Chartered Coronet Apartment Maintenance Statements")
 
 # Auto-Detect Files
 script_dir = os.path.dirname(os.path.abspath(__file__)) if '__file__' in locals() else os.getcwd()
@@ -300,18 +290,72 @@ if df is not None and apartment:
             st.error(f"❌ No passcode mapping found for Apartment {apartment} in `mobile_code.csv`.")
 
 # ----------------------------------------------------
-# Direct PDF Generation & Download
+# Content Display (Protected by Passcode)
 # ----------------------------------------------------
 
 if df is not None and apartment and is_verified:
-    pdf_bytes = generate_pdf(df, apartment)
+    preview = df[
+        df["Apartment Number"]
+        .astype(str)
+        .str.upper()
+        == str(apartment).upper()
+    ].copy()
+
+    total_debits = preview[preview["Amount"] > 0]["Amount"].sum() if "Amount" in preview.columns else 0
+    total_credits = abs(preview[preview["Amount"] < 0]["Amount"].sum()) if "Amount" in preview.columns else 0
+    net_bal = total_debits - total_credits
+
+    # Metrics Bar
+    m1, m2, m3, m4 = st.columns(4)
+    m1.metric("Selected Flat", apartment)
+    m2.metric("Total Debits", f"₹{total_debits:,.2f}")
+    m3.metric("Total Credits", f"₹{total_credits:,.2f}")
+    m4.metric("Net Balance", f"₹{net_bal:,.2f}")
 
     st.markdown("<br/>", unsafe_allow_html=True)
-    st.download_button(
-        label=f"⬇️ Download PDF Statement ({apartment})",
-        data=pdf_bytes,
-        file_name=f"{apartment}_Statement.pdf",
-        mime="application/pdf",
-        type="primary",
-        key="btn_dl"
+
+    # Actions Toolbar
+    st.subheader("⚡ Actions & Exports")
+    row1_col1, row1_col2 = st.columns([1, 1])
+
+    with row1_col1:
+        view_pdf = st.button("👁️ Open / Preview Current PDF", key="btn_view")
+        if view_pdf:
+            st.session_state["pdf_bytes"] = generate_pdf(df, apartment)
+            st.session_state["pdf_apt"] = apartment
+
+        if "pdf_bytes" in st.session_state and st.session_state.get("pdf_apt") == apartment:
+            st.download_button(
+                label=f"⬇️ Download PDF ({apartment})",
+                data=st.session_state["pdf_bytes"],
+                file_name=f"{apartment}_Statement.pdf",
+                mime="application/pdf",
+                type="primary",
+                key="btn_dl"
+            )
+
+    with row1_col2:
+        st.button("📦 Batch Generate ALL PDFs (.ZIP) [Disabled]", key="btn_batch", disabled=True)
+
+    st.markdown("<br/>", unsafe_allow_html=True)
+
+    # PDF Image Render
+    if "pdf_bytes" in st.session_state and st.session_state.get("pdf_apt") == apartment:
+        st.markdown("### 📄 Statement Preview")
+        try:
+            images = render_pdf_to_images(st.session_state["pdf_bytes"])
+            for idx, img in enumerate(images):
+                st.image(img, caption=f"Page {idx + 1}", use_container_width=True)
+        except Exception as e:
+            st.error(f"Error rendering preview: {e}")
+            
+        st.markdown("<br/>", unsafe_allow_html=True)
+
+    # Data Table Preview
+    st.subheader("📊 Transaction Log Preview")
+    st.dataframe(
+        preview,
+        use_container_width=True,
+        height=300,
+        hide_index=True
     )
