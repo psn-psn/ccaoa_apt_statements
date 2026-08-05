@@ -149,14 +149,14 @@ def generate_pdf(df, apartment):
         ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
         ("FONTSIZE", (0, 0), (-1, -1), 8)
     ]))
-   report_date_style = ParagraphStyle(
+    report_date_style = ParagraphStyle(
     'ReportDateStyle',
     parent=styles['Normal'],
     fontName='Helvetica',
     fontSize=9,
     alignment=TA_LEFT,  # Or alignment=0
     spaceAfter=10
-)
+    )
 
 # 2. Format Date String
 today_str = datetime.now().strftime("%d-%b-%Y")
@@ -166,7 +166,7 @@ story = [
     Paragraph(f"<b>CCAOA Maintenance Statement for Apartment : {apartment}</b>", styles["Title"]),
     Paragraph(f"Report Date: <b>{today_str}</b>", report_date_style),
     table
-]
+    ]
     doc.build(story)
     pdf = buffer.getvalue()
     buffer.close()
