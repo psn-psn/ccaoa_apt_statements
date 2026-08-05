@@ -4,8 +4,9 @@ import io
 import os
 import zipfile
 import pandas as pd
+import pypdfium2 as pdfium
+from PIL import Image
 import streamlit as st
-import streamlit.components.v1 as components
 
 from reportlab.platypus import (
     SimpleDocTemplate,
@@ -151,6 +152,17 @@ def generate_pdf(df, apartment):
 
     return pdf
 
+def render_pdf_to_images(pdf_bytes):
+    """Converts in-memory PDF bytes into PIL Images for previewing in Streamlit."""
+    pdf_file = pdfium.PdfDocument(pdf_bytes)
+    images = []
+    for page in pdf_file:
+        # Render at 150 DPI for crisp visual resolution
+        bitmap = page.render(scale=150 / 72)
+        pil_image = bitmap.to_pil()
+        images.append(pil_image)
+    return images
+
 # ----------------------------------------------------
 # Main Streamlit Application
 # ----------------------------------------------------
@@ -244,18 +256,16 @@ if df is not None and apartment:
 
     st.markdown("<br/>", unsafe_allow_html=True)
 
-    # --- Fixed Embedded PDF Viewer for Chrome ---
+    # --- Robust PDF Image Render (Chrome / Mobile Safe) ---
     if "pdf_bytes" in st.session_state and st.session_state.get("pdf_apt") == apartment:
         st.markdown("### 📄 Statement Preview")
-        base64_pdf = base64.b64encode(st.session_state["pdf_bytes"]).decode('utf-8')
-
-        # Using HTML <object> tag rendered inside Streamlit components to bypass Chrome data-URI block
-        pdf_display = f"""
-            <object data="data:application/pdf;base64,{base64_pdf}" type="application/pdf" width="100%" height="600px">
-                <p>Your browser does not support embedded PDFs. You can download the PDF using the button above.</p>
-            </object>
-        """
-        components.html(pdf_display, height=620, scrolling=True)
+        try:
+            images = render_pdf_to_images(st.session_state["pdf_bytes"])
+            for idx, img in enumerate(images):
+                st.image(img, caption=f"Page {idx + 1}", use_container_width=True)
+        except Exception as e:
+            st.error(f"Error rendering preview: {e}")
+            
         st.markdown("<br/>", unsafe_allow_html=True)
 
     # Data Table Preview
