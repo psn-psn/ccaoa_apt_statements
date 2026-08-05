@@ -235,7 +235,7 @@ user_code = ""
 with c3:
     if df is not None and apartment:
         user_code = st.text_input(
-            "Enter 4-Digit Passcode",
+            "Enter last 4-Digits of your mobile number",
             max_chars=4,
             type="password",
             placeholder="****"
