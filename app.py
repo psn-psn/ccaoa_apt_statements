@@ -158,7 +158,7 @@ def generate_pdf(df, apartment):
         spaceAfter=10
     )
 
-    legend_text_style = ParagraphStyle(
+    note_text_style = ParagraphStyle(
         'LegendText',
         parent=styles['Normal'],
         fontName='Helvetica',
@@ -170,18 +170,9 @@ def generate_pdf(df, apartment):
 
     today_str = datetime.now().strftime("%d-%b-%Y")
 
-    legend_lines = [
-        "MNQ1: Maintenance Q1",
-        "MNQ2: Maintenance Q2",
-        "MNQ3: Maintenance Q3",
-        "MNQ4: Maintenance Q4",
-        "IMP: Imprest",
-        "SPC_Aug: Special Collection August",
-        "SPC_Sep: Special Collection September",
-        "SPC_Oct: Special Collection October",
-        "SPC_Nov: Special Collection November",
-        "CFW: Carry Forward",
-        "LTF: Late Fee"
+    Note_lines = [
+        "Note1: ",
+        "Note2: "
     ]
 
     story = [
@@ -191,8 +182,8 @@ def generate_pdf(df, apartment):
         Spacer(1, 10)
     ]
 
-    for line in legend_lines:
-        story.append(Paragraph(line, legend_text_style))
+    for line in Note_lines:
+        story.append(Paragraph(line, note_text_style))
 
     def draw_footer(canvas, doc):
         canvas.saveState()
