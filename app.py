@@ -280,7 +280,7 @@ if df is not None and apartment:
             clean_user_code = clean_code(user_code)
 
             if not user_code:
-                st.info("🔒 Please enter your 4-digit code to verify access.")
+                st.info("🔒 Please enter last 4-digits of your mobile number to verify access.")
             elif len(clean_user_code) != 4 or not clean_user_code.isdigit():
                 st.warning("⚠️ Please enter a valid 4-digit numeric code.")
             elif clean_user_code == expected_code:
