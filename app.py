@@ -176,7 +176,6 @@ def generate_pdf(df, apartment):
         "MNQ3: Maintenance Q3",
         "MNQ4: Maintenance Q4",
         "IMP: Imprest",
-        "SP0: Special Collection 40000",
         "SPC_Aug: Special Collection August",
         "SPC_Sep: Special Collection September",
         "SPC_Oct: Special Collection October",
